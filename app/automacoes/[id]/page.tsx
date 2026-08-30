@@ -4,6 +4,7 @@ import { db } from "@/lib/supabase";
 import type { Automation } from "@/lib/types";
 import AutomationForm from "../AutomationForm";
 import { loadMedia } from "../loadMedia";
+import { listMaterials } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,6 @@ export default async function EditarAutomacao({
   const { data } = await db().from("automations").select("*").eq("id", id).single();
   if (!data) notFound();
 
-  const { media, mediaError } = await loadMedia();
-  return <AutomationForm automation={data as unknown as Automation} media={media} mediaError={mediaError} />;
+  const [{ media, mediaError }, materials] = await Promise.all([loadMedia(), listMaterials().catch(() => [])]);
+  return <AutomationForm automation={data as unknown as Automation} media={media} mediaError={mediaError} materials={materials} />;
 }

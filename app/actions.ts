@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/supabase";
 import { isLoggedIn } from "@/lib/auth";
 import { drainQueue } from "@/lib/engine";
+import { putMaterial, removeMaterial } from "@/lib/storage";
 import type { MatchType } from "@/lib/types";
 
 async function guard() {
@@ -107,4 +108,34 @@ export async function retryQueueItem(formData: FormData) {
     .update({ status: "pending", run_after: new Date().toISOString(), attempts: 0, claimed_at: null })
     .eq("id", str(formData, "id"));
   revalidatePath("/");
+}
+
+// ------------------------------------------------------------
+// Materiais (Supabase Storage)
+// ------------------------------------------------------------
+export async function uploadMaterial(formData: FormData) {
+  await guard();
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    redirect("/materiais?erro=" + encodeURIComponent("Nenhum arquivo selecionado"));
+  }
+  if (file.size > 25 * 1024 * 1024) {
+    redirect("/materiais?erro=" + encodeURIComponent("Arquivo maior que 25 MB"));
+  }
+  try {
+    const m = await putMaterial(file);
+    revalidatePath("/materiais");
+    redirect("/materiais?enviado=" + encodeURIComponent(m.name));
+  } catch (e) {
+    if (e && typeof e === "object" && "digest" in e) throw e; // redirect() do Next
+    redirect("/materiais?erro=" + encodeURIComponent(String(e).slice(0, 160)));
+  }
+}
+
+export async function deleteMaterial(formData: FormData) {
+  await guard();
+  const name = str(formData, "name");
+  if (name) await removeMaterial(name);
+  revalidatePath("/materiais");
+  redirect("/materiais");
 }

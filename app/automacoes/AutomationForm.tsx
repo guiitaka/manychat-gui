@@ -1,15 +1,19 @@
 import Link from "next/link";
 import { saveAutomation, deleteAutomation } from "../actions";
 import type { Automation, Media } from "@/lib/types";
+import type { Material } from "@/lib/storage";
+import MaterialPicker from "./MaterialPicker";
 
 export default function AutomationForm({
   automation,
   media,
   mediaError,
+  materials,
 }: {
   automation?: Automation;
   media: Media[];
   mediaError?: string;
+  materials: Material[];
 }) {
   const a = automation;
   const isNew = !a;
@@ -167,6 +171,7 @@ export default function AutomationForm({
             <div>
               <label className="label" htmlFor="link_url">URL</label>
               <input id="link_url" name="link_url" type="url" className="field" defaultValue={a?.link_url ?? ""} placeholder="https://..." />
+              <MaterialPicker materials={materials} />
             </div>
             <div>
               <label className="label" htmlFor="link_button_label">Rótulo do botão</label>
@@ -193,8 +198,8 @@ export default function AutomationForm({
             </div>
             <div>
               <label className="label" htmlFor="reminder_delay_minutes">Atraso (min)</label>
-              <input id="reminder_delay_minutes" name="reminder_delay_minutes" type="number" min={0} className="field" defaultValue={a?.reminder_delay_minutes ?? 1440} />
-              <p className="hint">1440 = 24h</p>
+              <input id="reminder_delay_minutes" name="reminder_delay_minutes" type="number" min={0} className="field" defaultValue={a?.reminder_delay_minutes ?? 1200} />
+              <p className="hint">1200 = 20h. Acima de 1439 a janela de 24h já fechou e o lembrete é descartado.</p>
             </div>
           </div>
         </section>
