@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Next 16: o antigo middleware.ts virou proxy.ts.
 // Aqui só barramos a entrada; a validação forte do cookie acontece no servidor.
-const PUBLIC = ["/login", "/privacidade", "/exclusao-de-dados", "/api"];
+const PUBLIC = ["/login", "/privacidade", "/exclusao-de-dados", "/dados", "/api"];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
