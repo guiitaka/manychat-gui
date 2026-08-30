@@ -190,7 +190,14 @@ export async function handleComment(value: Record<string, any>, cfg: Config) {
 // ------------------------------------------------------------
 export async function handleMessaging(m: Record<string, any>, cfg: Config) {
   const senderId: string | undefined = m?.sender?.id;
-  const message = m?.message ?? {};
+  const message = m?.message;
+
+  // Só mensagem DE VERDADE conta. Recibo de leitura (messaging_seen), reação,
+  // confirmação de entrega e postback chegam no MESMO array `messaging` e não
+  // podem abrir a janela de 24h nem disparar follow-ups.
+  if (!message || m?.read || m?.delivery || m?.reaction || m?.postback || message?.is_deleted) {
+    return;
+  }
   const mid: string = message?.mid || `${senderId}:${m?.timestamp || Date.now()}`;
   const text: string = message?.text ?? "";
   const isEcho = Boolean(message?.is_echo);
