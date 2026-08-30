@@ -33,6 +33,13 @@ ADMIN_PASSWORD               # senha do painel
 APP_URL                      # https://seu-app.vercel.app (a Vercel preenche sozinha)
 ```
 
+## Materiais
+
+Bucket público `materiais` no Supabase Storage (1 GB grátis). O painel envia o
+arquivo, normaliza o nome e devolve o link público — não é preciso deploy para
+publicar material novo. Reenviar o mesmo nome substitui o arquivo, e toda
+automação que já usa aquele link passa a entregar a versão nova.
+
 ## Banco
 
 1. `supabase/01_schema.sql` — tabelas, RLS, trigger de follow-ups e a trava atômica da fila.
@@ -44,6 +51,7 @@ APP_URL                      # https://seu-app.vercel.app (a Vercel preenche soz
 |---|---|
 | `/` | Painel: conta, automações, fila, eventos |
 | `/automacoes/nova` · `/automacoes/[id]` | Criar e editar automações |
+| `/materiais` | Upload de PDF/imagem/áudio; o link público sai pronto |
 | `/api/webhook` | GET = handshake da Meta · POST = eventos |
 | `/api/oauth/start` · `/api/oauth/callback` | Login do Instagram e assinatura dos webhooks |
 | `/api/queue/drain` | Worker (Bearer `CRON_SECRET`) |
