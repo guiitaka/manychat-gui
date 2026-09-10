@@ -53,6 +53,7 @@ export default async function Dashboard({
             <button className="btn btn-ghost" type="submit">Drenar fila agora</button>
           </form>
           <Link href="/materiais" className="btn btn-ghost">Materiais</Link>
+          <Link href="/reservas-admin" className="btn btn-ghost">Reservas</Link>
           <Link href="/automacoes/nova" className="btn btn-primary">+ Nova automação</Link>
         </div>
       </header>

@@ -88,6 +88,23 @@ export type EventRow = {
   created_at: string;
 };
 
+export type ReservationModel = "iPhone 18 Pro" | "iPhone 18 Pro Max" | "iPhone Duo";
+
+export const RESERVATION_MODELS: ReservationModel[] = [
+  "iPhone 18 Pro",
+  "iPhone 18 Pro Max",
+  "iPhone Duo",
+];
+
+export type Reservation = {
+  id: string;
+  name: string;
+  phone: string;
+  model: ReservationModel;
+  status: "pending" | "contacted";
+  created_at: string;
+};
+
 export type Media = {
   id: string;
   media_type?: string;
