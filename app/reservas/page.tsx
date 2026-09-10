@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { RESERVATION_MODELS, type ReservationModel } from "@/lib/types";
 import { createReservation } from "./actions";
 
@@ -48,15 +47,7 @@ export default async function Reservas({
             .hero-video { display: none; }
           }
         `}</style>
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(circle at 50% 20%, rgba(225,48,108,0.45), transparent 60%), " +
-              "radial-gradient(circle at 80% 60%, rgba(247,119,55,0.3), transparent 55%), " +
-              "rgba(11,11,15,0.55)",
-          }}
-        />
+        <div className="absolute inset-0 bg-black/50" />
 
         <div className="relative">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-muted)] mb-3">
@@ -65,27 +56,11 @@ export default async function Reservas({
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white">
             Reserve o seu
             <br />
-            <span
-              className="bg-clip-text text-transparent"
-              style={{ backgroundImage: "linear-gradient(135deg, var(--color-brand), var(--color-brand-2))" }}
-            >
-              iPhone 18
-            </span>
+            iPhone 18
           </h1>
           <p className="mt-4 text-[var(--color-soft)] max-w-md mx-auto">
             Os novos iPhones acabaram de chegar. Garanta prioridade na fila assim que forem liberados.
           </p>
-
-          <div className="mt-8 inline-block rounded-2xl bg-white p-3 shadow-2xl">
-            <Image
-              src="/reservas/duo-hero.jpg"
-              alt="iPhone Duo aberto e fechado, lado a lado"
-              width={675}
-              height={900}
-              priority
-              className="rounded-xl max-h-64 w-auto"
-            />
-          </div>
         </div>
       </section>
 
@@ -146,7 +121,13 @@ export default async function Reservas({
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary w-full">Reservar agora</button>
+            <button
+              type="submit"
+              className="btn w-full text-white border-transparent"
+              style={{ background: "linear-gradient(135deg, #2563eb, #3b82f6)" }}
+            >
+              Reservar agora
+            </button>
           </form>
         )}
 
