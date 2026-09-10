@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { RESERVATION_MODELS, type ReservationModel } from "@/lib/types";
 import { createReservation } from "./actions";
 
@@ -31,31 +32,61 @@ export default async function Reservas({
 
   return (
     <main className="min-h-screen">
-      <section
-        className="relative overflow-hidden px-5 py-20 sm:py-28 text-center"
-        style={{
-          background:
-            "radial-gradient(circle at 50% 20%, rgba(225,48,108,0.35), transparent 60%), " +
-            "radial-gradient(circle at 80% 60%, rgba(247,119,55,0.22), transparent 55%), " +
-            "var(--color-ink)",
-        }}
-      >
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-muted)] mb-3">
-          Reserva antecipada
-        </p>
-        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white">
-          Reserve o seu
-          <br />
-          <span
-            className="bg-clip-text text-transparent"
-            style={{ backgroundImage: "linear-gradient(135deg, var(--color-brand), var(--color-brand-2))" }}
-          >
-            iPhone 18
-          </span>
-        </h1>
-        <p className="mt-4 text-[var(--color-soft)] max-w-md mx-auto">
-          Os novos iPhones acabaram de chegar. Garanta prioridade na fila assim que forem liberados.
-        </p>
+      <section className="relative overflow-hidden px-5 py-20 sm:py-28 text-center">
+        <video
+          className="hero-video absolute inset-0 h-full w-full object-cover"
+          src="/reservas/hero-bg.mp4"
+          poster="/reservas/hero-bg-poster.jpg"
+          autoPlay
+          muted
+          loop
+          playsInline
+          aria-hidden
+        />
+        <style>{`
+          @media (prefers-reduced-motion: reduce) {
+            .hero-video { display: none; }
+          }
+        `}</style>
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(circle at 50% 20%, rgba(225,48,108,0.45), transparent 60%), " +
+              "radial-gradient(circle at 80% 60%, rgba(247,119,55,0.3), transparent 55%), " +
+              "rgba(11,11,15,0.55)",
+          }}
+        />
+
+        <div className="relative">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-muted)] mb-3">
+            Reserva antecipada
+          </p>
+          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white">
+            Reserve o seu
+            <br />
+            <span
+              className="bg-clip-text text-transparent"
+              style={{ backgroundImage: "linear-gradient(135deg, var(--color-brand), var(--color-brand-2))" }}
+            >
+              iPhone 18
+            </span>
+          </h1>
+          <p className="mt-4 text-[var(--color-soft)] max-w-md mx-auto">
+            Os novos iPhones acabaram de chegar. Garanta prioridade na fila assim que forem liberados.
+          </p>
+
+          <div className="mt-8 inline-block rounded-2xl bg-white p-3 shadow-2xl">
+            <Image
+              src="/reservas/duo-hero.jpg"
+              alt="iPhone Duo aberto e fechado, lado a lado"
+              width={675}
+              height={900}
+              priority
+              className="rounded-xl max-h-64 w-auto"
+            />
+          </div>
+        </div>
       </section>
 
       <div className="mx-auto max-w-lg px-5 -mt-10 sm:-mt-14 pb-16 relative">
