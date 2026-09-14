@@ -210,12 +210,16 @@ export async function handleMessaging(m: Record<string, any>, cfg: Config) {
   const kind = storyReply ? "story_reply" : "message";
   const contact = await upsertContact(senderId);
 
-  // Qualquer mensagem da pessoa ABRE a janela de 24h.
+  // Qualquer mensagem da pessoa ABRE a janela de 24h. Conta a partir do horário
+  // da Meta: num reprocessamento atrasado, "agora" esticaria a janela — e um
+  // evento antigo não pode recuar a janela aberta por uma mensagem mais nova.
+  const repliedAt = new Date(Math.min(Number(m?.timestamp) || Date.now(), Date.now())).toISOString();
   await db()
     .from("contacts")
-    .update({ last_reply_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq("id", contact.id);
-  contact.last_reply_at = new Date().toISOString();
+    .update({ last_reply_at: repliedAt, updated_at: new Date().toISOString() })
+    .eq("id", contact.id)
+    .or(`last_reply_at.is.null,last_reply_at.lt.${repliedAt}`);
+  contact.last_reply_at = repliedAt;
 
   // 1) A mensagem em si dispara uma automação de story/DM?
   const automations = await activeAutomations();
@@ -250,6 +254,80 @@ export async function handleMessaging(m: Record<string, any>, cfg: Config) {
   }
 
   await logEvent({ kind, ig_id: senderId, text, note: "sem automação associada", raw: m });
+}
+
+// ------------------------------------------------------------
+// Payload do webhook (comments / messages)
+// ------------------------------------------------------------
+export type WebhookBody = {
+  object?: string;
+  entry?: Array<{
+    changes?: Array<{ field?: string; value?: Parameters<typeof handleComment>[0] }>;
+    messaging?: Array<Parameters<typeof handleMessaging>[0]>;
+  }>;
+};
+
+export async function processWebhookPayload(body: WebhookBody) {
+  if (body?.object !== "instagram") return;
+
+  const cfg = await getConfig();
+
+  for (const entry of body.entry || []) {
+    for (const change of entry.changes || []) {
+      if (change.field === "comments") {
+        await handleComment(change.value || {}, cfg);
+      }
+    }
+    for (const m of entry.messaging || []) {
+      await handleMessaging(m || {}, cfg);
+    }
+  }
+}
+
+// ------------------------------------------------------------
+// Webhooks que falharam
+// ------------------------------------------------------------
+// A Meta recebe 200 antes do processamento e não reenvia. Se o Supabase cair no
+// meio (ex.: 504 do gateway), o webhook guarda o payload cru em `events` com este
+// kind e o cron reprocessa. dedupe_key e upserts tornam o reprocessamento seguro.
+export const FAILED_WEBHOOK_KIND = "webhook_falhou";
+const REPROCESSED_WEBHOOK_KIND = "webhook_reprocessado";
+const REPROCESS_MAX_AGE_HOURS = 24;
+
+export async function saveFailedWebhook(body: WebhookBody, err: unknown) {
+  // id gerado aqui torna o insert idempotente: é upsert, e o retry do fetch pode
+  // repetir sem duplicar a linha.
+  const { error } = await db()
+    .from("events")
+    .upsert(
+      { id: crypto.randomUUID(), kind: FAILED_WEBHOOK_KIND, note: String(err).slice(0, 900), raw: body },
+      { onConflict: "id", ignoreDuplicates: true }
+    );
+  if (error) throw new Error(`events: ${error.message}`);
+}
+
+export async function reprocessFailedWebhooks(limit = 10): Promise<number> {
+  const since = new Date(Date.now() - REPROCESS_MAX_AGE_HOURS * 3600_000).toISOString();
+  const { data, error } = await db()
+    .from("events")
+    .select("id, raw")
+    .eq("kind", FAILED_WEBHOOK_KIND)
+    .gte("created_at", since)
+    .order("created_at", { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`events: ${error.message}`);
+
+  let done = 0;
+  for (const row of data || []) {
+    try {
+      await processWebhookPayload((row.raw || {}) as WebhookBody);
+      await db().from("events").update({ kind: REPROCESSED_WEBHOOK_KIND }).eq("id", row.id);
+      done++;
+    } catch (err) {
+      await db().from("events").update({ note: String(err).slice(0, 900) }).eq("id", row.id);
+    }
+  }
+  return done;
 }
 
 // ------------------------------------------------------------

@@ -1,7 +1,7 @@
 import { NextResponse, after } from "next/server";
 import crypto from "node:crypto";
 import { env } from "@/lib/env";
-import { getConfig, handleComment, handleMessaging, drainQueue, logEvent } from "@/lib/engine";
+import { processWebhookPayload, saveFailedWebhook, drainQueue, logEvent, type WebhookBody } from "@/lib/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,10 +36,31 @@ export async function POST(req: Request) {
   // Responder rápido é obrigatório: a Meta desativa webhooks lentos.
   // O processamento pesado vai para after().
   after(async () => {
+    let body: WebhookBody;
     try {
-      await processPayload(raw);
+      body = JSON.parse(raw);
+    } catch (err) {
+      await logEvent({ kind: "erro", note: `JSON inválido: ${String(err).slice(0, 880)}` }).catch(() => {});
+      return;
+    }
+
+    try {
+      await processWebhookPayload(body);
+    } catch (err) {
+      // A Meta já recebeu 200 e não reenvia: guarda o payload para o cron reprocessar.
+      console.error("webhook: falha ao processar evento", err);
+      await saveFailedWebhook(body, err).catch((saveErr) => {
+        // Último recurso: o payload fica no log da Vercel para reprocessar à mão.
+        console.error("webhook: payload não salvo", String(saveErr), raw);
+      });
+      return;
+    }
+
+    try {
       await drainQueue(20); // envio praticamente instantâneo, com a trava atômica protegendo
     } catch (err) {
+      // O cron drena a cada minuto; aqui só registramos.
+      console.error("webhook: falha ao drenar a fila", err);
       await logEvent({ kind: "erro", note: String(err).slice(0, 900) }).catch(() => {});
     }
   });
@@ -58,22 +79,4 @@ function verifySignature(raw: string, header: string): boolean {
   const b = Buffer.from(received, "hex");
   if (a.length !== b.length || a.length === 0) return false;
   return crypto.timingSafeEqual(a, b);
-}
-
-async function processPayload(raw: string) {
-  const body = JSON.parse(raw);
-  if (body?.object !== "instagram") return;
-
-  const cfg = await getConfig();
-
-  for (const entry of body.entry || []) {
-    for (const change of entry.changes || []) {
-      if (change.field === "comments") {
-        await handleComment(change.value || {}, cfg);
-      }
-    }
-    for (const m of entry.messaging || []) {
-      await handleMessaging(m || {}, cfg);
-    }
-  }
 }
