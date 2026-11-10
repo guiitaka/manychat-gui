@@ -13,6 +13,11 @@ export const env = {
   get igVerifyToken() { return req("IG_VERIFY_TOKEN"); },
   get cronSecret() { return req("CRON_SECRET"); },
   get adminPassword() { return req("ADMIN_PASSWORD"); },
+  // Número do WhatsApp do Gui (só dígitos, com DDI), usado no link wa.me do handoff.
+  get whatsappNumber() { return (process.env.WHATSAPP_NUMBER || "").replace(/\D/g, "") || null; },
+  // Opcional: URL que recebe um POST JSON a cada handoff (aviso ao Gui).
+  get handoffWebhookUrl() { return process.env.HANDOFF_WEBHOOK_URL || null; },
+  get handoffWebhookSecret() { return process.env.HANDOFF_WEBHOOK_SECRET || null; },
   get appUrl() {
     const explicit = process.env.APP_URL;
     if (explicit) return explicit.replace(/\/$/, "");

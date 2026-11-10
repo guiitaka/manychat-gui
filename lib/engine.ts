@@ -4,11 +4,13 @@ import {
   sendMessage,
   replyToComment,
   textMessage,
+  textMessageWithReplies,
   buttonMessage,
   checkFollowsBusiness,
   IgError,
 } from "./ig";
 import { runFollowGate, VIP_EVENT } from "./follow-check";
+import { handleProspectMessage } from "./prospects";
 import type { Automation, Config, Contact, Followup, QueueItem } from "./types";
 
 // Limites práticos da Meta que respeitamos por conta própria.
@@ -142,7 +144,7 @@ export async function upsertContact(igId: string, username?: string | null): Pro
 // ------------------------------------------------------------
 // Fila
 // ------------------------------------------------------------
-type EnqueueInput = {
+export type EnqueueInput = {
   kind: QueueItem["kind"];
   automation_id?: string | null;
   contact_id?: string | null;
@@ -296,6 +298,27 @@ export async function handleMessaging(m: Record<string, any>, cfg: Config) {
     .eq("id", contact.id)
     .or(`last_reply_at.is.null,last_reply_at.lt.${repliedAt}`);
   contact.last_reply_at = repliedAt;
+
+  // 0) Lista de abordados (prospecção ativa): só quem está nela conversa com o bot.
+  // Quem não está (amigos, família, clientes) cai direto nas regras antigas abaixo.
+  if (!quickPayload?.startsWith("AUTO:")) {
+    const turn = await handleProspectMessage({
+      senderId,
+      mid,
+      text,
+      quickPayload,
+      timestamp: Number(m?.timestamp) || undefined,
+      contact,
+      cfg,
+      enqueue,
+      upsertContact,
+      logEvent,
+    });
+    if (turn.handled) {
+      await logEvent({ kind, ig_id: senderId, text, note: `prospecção: ${turn.outcome}`, raw: m });
+      return;
+    }
+  }
 
   // 1) A mensagem em si dispara uma automação de story/DM?
   const automations = await activeAutomations();
@@ -522,6 +545,11 @@ async function sendQueueItem(item: QueueItem, cfg: Config) {
 
   if (item.kind === "link" && p.url) {
     await sendMessage(igUserId, token, recipient, buttonMessage(p.text || "", p.url, p.button || "Abrir"));
+    return;
+  }
+
+  if (p.quick_replies && p.quick_replies.length > 0) {
+    await sendMessage(igUserId, token, recipient, textMessageWithReplies(p.text || "", p.quick_replies));
     return;
   }
 

@@ -135,6 +135,34 @@ export function textMessage(text: string, quickReplyLabel?: string | null, paylo
   return message;
 }
 
+// Texto com VÁRIOS botões de resposta rápida (cada um com seu payload)
+export function textMessageWithReplies(text: string, replies: Array<{ title: string; payload: string }>) {
+  return {
+    text,
+    quick_replies: replies.slice(0, 13).map((r) => ({
+      content_type: "text",
+      title: r.title.slice(0, 20),
+      payload: r.payload,
+    })),
+  };
+}
+
+// @ da pessoa a partir do IGSID (para casar com a lista de abordados). null se falhar.
+export async function getIgUsername(igId: string, token: string | null | undefined): Promise<string | null> {
+  if (!token) return null;
+  try {
+    const url = new URL(`${BASE}/${igId}`);
+    url.searchParams.set("fields", "username");
+    url.searchParams.set("access_token", token);
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { username?: unknown };
+    return typeof json.username === "string" && json.username ? json.username.toLowerCase() : null;
+  } catch {
+    return null;
+  }
+}
+
 // Template de botão com URL (o cartão com o link)
 export function buttonMessage(text: string, url: string, buttonTitle: string) {
   return {

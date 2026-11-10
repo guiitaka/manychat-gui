@@ -1,4 +1,14 @@
-import type { Automation, Config, Contact, EventRow, Followup, QueueItem, Reservation } from "./types";
+import type {
+  Automation,
+  Config,
+  Contact,
+  EventRow,
+  Followup,
+  ProspectRow,
+  ProspectTransitionRow,
+  QueueItem,
+  Reservation,
+} from "./types";
 
 // Tipagem mínima do banco para o supabase-js. Sem isso ele trata toda tabela
 // desconhecida como `never` e nenhum insert/update compila.
@@ -19,6 +29,8 @@ export type Database = {
       queue: Table<QueueItem>;
       events: Table<EventRow>;
       reservations: Table<Reservation>;
+      prospects: Table<ProspectRow>;
+      prospect_transitions: Table<ProspectTransitionRow>;
     };
     Views: Record<never, never>;
     Functions: {

@@ -66,7 +66,13 @@ export type QueueItem = {
   recipient_comment_id: string | null;
   recipient_ig_id: string | null;
   comment_id: string | null;
-  payload: { text?: string; url?: string; button?: string; quick_reply?: string };
+  payload: {
+    text?: string;
+    url?: string;
+    button?: string;
+    quick_reply?: string;
+    quick_replies?: Array<{ title: string; payload: string }>;
+  };
   requires_window: boolean;
   run_after: string;
   attempts: number;
@@ -88,6 +94,34 @@ export type EventRow = {
   matched_automation_id: string | null;
   note: string | null;
   raw: unknown;
+  created_at: string;
+};
+
+export type ProspectRow = {
+  id: string;
+  username: string;
+  ig_id: string | null;
+  step: number;
+  status: "abordado" | "em_conversa" | "nutricao" | "handoff" | "opt_out";
+  tags: string[];
+  answers: Record<string, unknown>;
+  paused_until: string | null;
+  handoff_count: number;
+  last_mid: string;
+  contacted_at: string;
+  last_inbound_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProspectTransitionRow = {
+  id: string;
+  prospect_id: string | null;
+  username: string;
+  etapa: "novo" | "em_conversa" | "proposta" | "negociando" | "ganho" | "perdido";
+  tags: string[];
+  note: string | null;
+  proximo_followup: string | null;
   created_at: string;
 };
 
