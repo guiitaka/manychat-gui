@@ -19,6 +19,9 @@ export type Automation = {
   link_delay_minutes: number;
   reminder_message: string | null;
   reminder_delay_minutes: number;
+  // Só libera os follow-ups depois de confirmar (API) que a pessoa segue o perfil.
+  require_follow?: boolean;
+  not_following_message?: string | null;
   created_at: string;
   updated_at: string;
 };

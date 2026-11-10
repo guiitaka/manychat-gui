@@ -1,4 +1,5 @@
 import { env, IG_GRAPH, IG_API_VERSION } from "./env";
+import { fetchFollowStatus } from "./follow-check";
 
 const BASE = `${IG_GRAPH}/${IG_API_VERSION}`;
 
@@ -74,6 +75,11 @@ export async function getMe(token: string) {
     profile_picture_url?: string;
     id?: string;
   }>;
+}
+
+// A pessoa (IGSID) segue a conta? Erro/campo ausente volta como status "error".
+export function checkFollowsBusiness(igId: string, token: string | null | undefined) {
+  return fetchFollowStatus(BASE, igId, token);
 }
 
 // Assina os webhooks na conta (feito no callback do login)

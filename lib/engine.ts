@@ -5,8 +5,10 @@ import {
   replyToComment,
   textMessage,
   buttonMessage,
+  checkFollowsBusiness,
   IgError,
 } from "./ig";
+import { runFollowGate, VIP_EVENT } from "./follow-check";
 import type { Automation, Config, Contact, Followup, QueueItem } from "./types";
 
 // Limites práticos da Meta que respeitamos por conta própria.
@@ -34,6 +36,80 @@ export async function activeAutomations(): Promise<Automation[]> {
     .order("created_at", { ascending: true });
   if (error) throw new Error(`automations: ${error.message}`);
   return (data || []) as unknown as Automation[];
+}
+
+async function getAutomationById(id: string): Promise<Automation | null> {
+  const { data, error } = await db().from("automations").select("*").eq("id", id).maybeSingle();
+  if (error) throw new Error(`automations: ${error.message}`);
+  return (data as unknown as Automation | null) ?? null;
+}
+
+const DEFAULT_NOT_FOLLOWING =
+  "Ainda não apareceu aqui que você segue o @gui.apple.specialist 🙈 Segue o perfil e toca em \"Já segui\" de novo que eu confirmo seu lugar.";
+
+// Automação com require_follow: só libera os follow-ups se a API confirmar que a
+// pessoa segue. Não segue, erro ou campo ausente = pede para seguir (botão reutilizável).
+async function handleFollowGate(
+  automation: Automation,
+  contact: Contact,
+  senderId: string,
+  mid: string,
+  cfg: Config
+) {
+  const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+  return runFollowGate({
+    check: async () => {
+      const r = await checkFollowsBusiness(senderId, cfg.access_token);
+      if (r.status !== "error" && r.username && r.username !== contact.username) {
+        await upsertContact(senderId, r.username);
+      }
+      return r;
+    },
+    alreadyConfirmed: async () => {
+      const { data, error } = await db()
+        .from("events")
+        .select("id")
+        .eq("kind", VIP_EVENT.confirmed)
+        .eq("ig_id", senderId)
+        .eq("matched_automation_id", automation.id)
+        .limit(1);
+      if (error) throw new Error(`events: ${error.message}`);
+      return (data || []).length > 0;
+    },
+    askedLast24h: async () => {
+      const { count, error } = await db()
+        .from("events")
+        .select("id", { count: "exact", head: true })
+        .in("kind", [VIP_EVENT.notFollowing, VIP_EVENT.checkError])
+        .eq("ig_id", senderId)
+        .eq("matched_automation_id", automation.id)
+        .gte("created_at", since);
+      if (error) throw new Error(`events: ${error.message}`);
+      return count ?? 0;
+    },
+    enqueueConfirm: () => enqueueFollowups(contact, automation.id),
+    enqueueAskFollow: () =>
+      enqueue({
+        kind: "welcome_dm",
+        automation_id: automation.id,
+        contact_id: contact.id,
+        recipient_ig_id: senderId,
+        payload: {
+          text: automation.not_following_message || DEFAULT_NOT_FOLLOWING,
+          quick_reply: automation.quick_reply_label || "Já segui",
+        },
+        requires_window: true,
+        dedupe_key: `nf:${mid}`,
+      }),
+    log: (kind, note, username) =>
+      logEvent({
+        kind,
+        ig_id: senderId,
+        username: username ?? contact.username,
+        matched_automation_id: automation.id,
+        note,
+      }),
+  });
 }
 
 export async function logEvent(row: {
@@ -248,6 +324,12 @@ export async function handleMessaging(m: Record<string, any>, cfg: Config) {
   const automationId = fromPayload || contact.last_automation_id;
 
   if (automationId) {
+    const automation = await getAutomationById(automationId);
+    if (automation?.require_follow) {
+      const outcome = await handleFollowGate(automation, contact, senderId, mid, cfg);
+      await logEvent({ kind, ig_id: senderId, text, matched_automation_id: automationId, note: `checagem de follow: ${outcome}`, raw: m });
+      return;
+    }
     const n = await enqueueFollowups(contact, automationId);
     await logEvent({ kind, ig_id: senderId, text, matched_automation_id: automationId, note: `janela aberta — ${n} follow-up(s) enfileirado(s)`, raw: m });
     return;

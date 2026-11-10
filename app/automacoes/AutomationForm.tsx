@@ -152,6 +152,15 @@ export default function AutomationForm({
             <input id="quick_reply_label" name="quick_reply_label" maxLength={20} className="field" defaultValue={a?.quick_reply_label ?? ""} placeholder="QUERO O PDF" />
             <p className="hint">Quando a pessoa toca, a janela de 24h abre e os follow-ups abaixo entram na fila.</p>
           </div>
+
+          <div className="space-y-3">
+            <Check name="require_follow" label="Só liberar os follow-ups se a pessoa seguir o perfil (checa na API)" defaultChecked={a?.require_follow ?? false} />
+            <div>
+              <label className="label" htmlFor="not_following_message">Mensagem quando NÃO segue (ou a checagem falha)</label>
+              <textarea id="not_following_message" name="not_following_message" rows={2} className="field" defaultValue={a?.not_following_message ?? ""} placeholder="Ainda não apareceu aqui que você segue o perfil 🙈 Segue e toca em “Já segui” de novo." />
+              <p className="hint">Sai com o mesmo botão de resposta rápida acima, que pode ser tocado de novo (máx. 5 vezes/24h por pessoa).</p>
+            </div>
+          </div>
         </section>
 
         {/* 6. Follow-up: link */}

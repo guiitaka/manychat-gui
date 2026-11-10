@@ -46,6 +46,8 @@ export async function saveAutomation(formData: FormData) {
     link_button_label: str(formData, "link_button_label") || null,
     link_url: str(formData, "link_url") || null,
     link_delay_minutes: int(formData, "link_delay_minutes", 0),
+    require_follow: bool(formData, "require_follow"),
+    not_following_message: str(formData, "not_following_message") || null,
     reminder_message: str(formData, "reminder_message") || null,
     reminder_delay_minutes: int(formData, "reminder_delay_minutes", 1440),
     updated_at: new Date().toISOString(),
