@@ -66,12 +66,14 @@ class World {
         return true;
       },
       recordTransition: async (p, t) => {
+        const tid = `t${this.transitions.length + 1}`;
         this.transitions.push({ username: p.username, ...t });
         this.log.push(`   CRM <- etapa=${t.etapa} tags=[${t.tags.join(",")}]${t.followup_days ? ` followup=+${t.followup_days}d` : ""} | ${t.note}`);
+        return tid;
       },
-      notifyHandoff: async (p, d) => {
+      notifyHandoff: async (p, d, _last, tid) => {
         this.notifications.push(`@${p.username}: ${d.outcome}`);
-        this.log.push(`   NOTIFICA GUI: @${p.username} (${d.outcome})`);
+        this.log.push(`   NOTIFICA GUI: @${p.username} (${d.outcome}) [delivery ho-${tid}]`);
       },
     };
   }

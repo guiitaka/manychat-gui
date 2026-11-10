@@ -1,8 +1,10 @@
 import { db } from "./supabase";
 import { env } from "./env";
 import { getIgUsername } from "./ig";
+import { sendHandoffWebhook } from "./handoff-webhook";
 import {
   runProspectTurn,
+  buildWaUrl,
   type Decision,
   type Patch,
   type Prospect,
@@ -44,28 +46,6 @@ function asProspect(row: Record<string, unknown>): Prospect {
     handoff_count: (row.handoff_count as number) ?? 0,
     last_mid: (row.last_mid as string) ?? "",
   };
-}
-
-// Aviso opcional ao Gui (POST JSON). Falha aqui nunca derruba o webhook.
-async function postHandoffWebhook(body: unknown) {
-  const url = env.handoffWebhookUrl;
-  if (!url) return;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 5000);
-  try {
-    const secret = env.handoffWebhookSecret;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...(secret ? { Authorization: `Bearer ${secret}` } : {}) },
-      body: JSON.stringify(body),
-      signal: ctrl.signal,
-    });
-    if (!res.ok) console.error(`[prospects] webhook de handoff respondeu ${res.status}`);
-  } catch (err) {
-    console.error(`[prospects] webhook de handoff falhou: ${String(err).slice(0, 200)}`);
-  } finally {
-    clearTimeout(timer);
-  }
 }
 
 export async function handleProspectMessage(ctx: Ctx): Promise<TurnResult> {
@@ -164,36 +144,53 @@ export async function handleProspectMessage(ctx: Ctx): Promise<TurnResult> {
       return (data || []).length > 0;
     },
 
-    recordTransition: async (p: Prospect, t: Transition) => {
+    recordTransition: async (p: Prospect, t: Transition): Promise<string | undefined> => {
       const followup = t.followup_days
         ? new Date(Date.now() + t.followup_days * 86_400_000).toISOString().slice(0, 10)
         : null;
-      const { error } = await db().from("prospect_transitions").insert({
-        prospect_id: p.id,
-        username: p.username,
-        etapa: t.etapa,
-        tags: t.tags,
-        note: t.note,
-        proximo_followup: followup,
-      });
+      const { data, error } = await db()
+        .from("prospect_transitions")
+        .insert({
+          prospect_id: p.id,
+          username: p.username,
+          etapa: t.etapa,
+          tags: t.tags,
+          note: t.note,
+          proximo_followup: followup,
+        })
+        .select("id")
+        .single();
       if (error) throw new Error(`prospect_transitions: ${error.message}`);
+      return (data as unknown as { id: string } | null)?.id;
     },
 
-    notifyHandoff: async (p: Prospect, d: Decision, lastText: string) => {
+    notifyHandoff: async (p: Prospect, d: Decision, lastText: string, transitionId?: string) => {
       await ctx.logEvent({
         kind: "prospect_handoff",
         ig_id: senderId,
         username: p.username,
         note: `@${p.username}: ${d.transition?.note ?? "handoff"}`,
       });
-      await postHandoffWebhook({
-        type: "prospect_handoff",
-        username: p.username,
-        outcome: d.outcome,
-        last_message: lastText.slice(0, 300),
-        answers: { ...p.answers, ...definedOnly(d.patch.answers) },
-        at: new Date().toISOString(),
-      });
+      const answers = { ...p.answers, ...definedOnly(d.patch.answers) };
+      const wa = env.whatsappNumber;
+      const result = await sendHandoffWebhook(
+        { url: env.handoffWebhookUrl, secret: env.handoffWebhookSecret },
+        {
+          // id da transição = único por evento; reprocessar o mesmo webhook não duplica o aviso
+          deliveryId: transitionId ? `ho-${transitionId}` : `ho-${p.id}-${p.handoff_count + 1}`,
+          data: {
+            username: p.username,
+            aparelho_atual: answers.modelo_atual ?? "",
+            modelo_desejado: answers.modelo_desejado ?? "",
+            motivo: d.transition?.note ?? "handoff",
+            ultima_mensagem: lastText,
+            wa_link: wa ? buildWaUrl(wa, answers) : "",
+          },
+        }
+      );
+      if (result !== "skipped") {
+        await ctx.logEvent({ kind: "prospect_handoff_webhook", ig_id: senderId, username: p.username, note: `webhook: ${result}` });
+      }
     },
   };
 

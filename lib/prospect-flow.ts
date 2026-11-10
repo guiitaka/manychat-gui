@@ -428,8 +428,9 @@ export type ProspectDeps = {
   // Aplica o patch só se o estado ainda for o lido (step/status/handoff_count) e a mid
   // for nova. false = outro webhook foi mais rápido / mensagem repetida.
   commit: (p: Prospect, patch: Patch, mid: string) => Promise<boolean>;
-  recordTransition: (p: Prospect, t: Transition) => Promise<void>;
-  notifyHandoff: (p: Prospect, d: Decision, lastText: string) => Promise<void>;
+  // devolve o id da transição (vira o delivery id do aviso de handoff)
+  recordTransition: (p: Prospect, t: Transition) => Promise<string | undefined>;
+  notifyHandoff: (p: Prospect, d: Decision, lastText: string, transitionId?: string) => Promise<void>;
 };
 
 export type TurnResult =
@@ -461,7 +462,7 @@ export async function runProspectTurn(
   const ok = await deps.commit(p, d.patch, input.mid);
   if (!ok) return { handled: true, outcome: "lost_race" };
 
-  if (d.transition) await deps.recordTransition(p, d.transition);
-  if (d.notify) await deps.notifyHandoff(p, d, (input.text || "").trim());
+  const transitionId = d.transition ? await deps.recordTransition(p, d.transition) : undefined;
+  if (d.notify) await deps.notifyHandoff(p, d, (input.text || "").trim(), transitionId);
   return { handled: true, outcome: d.outcome };
 }
