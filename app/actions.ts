@@ -73,7 +73,8 @@ export async function toggleAutomation(formData: FormData) {
 
 export async function deleteAutomation(formData: FormData) {
   await guard();
-  await db().from("automations").delete().eq("id", str(formData, "id"));
+  const { error } = await db().from("automations").delete().eq("id", str(formData, "id"));
+  if (error) throw new Error(error.message);
   revalidatePath("/");
   redirect("/");
 }

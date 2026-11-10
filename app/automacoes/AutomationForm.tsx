@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { saveAutomation, deleteAutomation } from "../actions";
+import { saveAutomation } from "../actions";
+import DeleteAutomationButton from "./DeleteAutomationButton";
 import type { Automation, Media } from "@/lib/types";
 import type { Material } from "@/lib/storage";
 import MaterialPicker from "./MaterialPicker";
@@ -27,12 +28,7 @@ export default function AutomationForm({
             {isNew ? "Nova automação" : a!.name}
           </h1>
         </div>
-        {!isNew && (
-          <form action={deleteAutomation}>
-            <input type="hidden" name="id" value={a!.id} />
-            <button className="btn btn-danger" type="submit">Excluir</button>
-          </form>
-        )}
+        {!isNew && <DeleteAutomationButton id={a!.id} name={a!.name} />}
       </div>
 
       <form action={saveAutomation} className="space-y-6">

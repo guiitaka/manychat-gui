@@ -5,6 +5,7 @@ import { db } from "@/lib/supabase";
 import { fmt, fmtFull, relative } from "@/lib/time";
 import type { Automation, Config } from "@/lib/types";
 import { toggleAutomation, disconnectAccount, drainNow, retryQueueItem } from "./actions";
+import DeleteAutomationButton from "./automacoes/DeleteAutomationButton";
 
 export const dynamic = "force-dynamic";
 
@@ -132,6 +133,7 @@ export default async function Dashboard({
                   <button className="btn btn-ghost" type="submit">{a.active ? "Pausar" : "Ativar"}</button>
                 </form>
                 <Link href={`/automacoes/${a.id}`} className="btn btn-ghost">Editar</Link>
+                <DeleteAutomationButton id={a.id} name={a.name} />
               </li>
             ))}
           </ul>
